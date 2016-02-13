@@ -7,7 +7,7 @@ include <PRZutility.scad>
 // documentation licence cc BY-SA and GFDL 1.2
 // Machine and components design licence CERN OHL V1.2
 
-camPos=true; //use the camera position defined below - could be unactivated for animations
+//camPos=true; //use the camera position defined below - could be unactivated for animations
 
 //$showcore=true; // change look and camera position to show the CoreXY simulation - need to reduce the edit window width for proper view
 
@@ -17,13 +17,12 @@ $vpt=camPos?($showcore)?[-37,65,210]:[30,100,137]:$vpt; //camera translation
 $vpr=camPos?($showcore)?[63,0,124]:[65,0,125]:$vpr;   // camera rotation
 
 // animated camera movement 
-$vpr = [65+yo($t)*30,0,125+$t*360]; // the camera rotate around the printer
+// $vpr = [65+yo($t)*30,0,125+$t*360]; // the camera rotate around the printer
 // note that the hotend 'follow' the camera as the variable is also used in the 'view_circle function
 // To see how to do animation films and understand animation function, have a look to the OpenScad Delta Simulator
 
 function yo(val)=(val<0.5)?2*val:2-2*val;
-
-echo_camera();
+//echo_camera();
 
 lgX = 180; // ref width (Y sliders)
 lgXc = lgX-16; // width at vertical sliders (columns)
@@ -51,11 +50,18 @@ bedThk = 10;
 clr_transp = [0.5,0.5,0.5,0.5];
 color_struct= ($showcore)?clr_transp:"lawngreen";
 module clst() { color(color_struct) children();}
-module clrs() { color("silver") children();}
-module clrg() { color("gray")  children();}
+module silver() { color("silver") children();}
+module gray() { color("gray")  children();}
 
-view_circle (100,0);
-//simul(0,0,0);
+part=0;
+
+if (!part)  view_circle (100,0); // run simulation
+// else show defined parts  
+else if (part==1) rot(180) motorsup();
+else if (part==2) rot(180) motorsup(true);  
+else if (part==5) rot (-90) Y_carriage();
+else if (part==6) rot (-90) Y_carriage(true);  
+else if (part==9) foot();
 
 module view_circle (dia, height) { //rotation on a given diameter at a set height
   simul (dia/2*cos($t*360),dia/2*sin($t*360),height);//simulate position (x,y,z) 
@@ -73,68 +79,43 @@ module simul(x=0,y=0,z=0) {
   hotend_offset = 28; // hotend offset/Zpos
   
   belt_show(Xpos, Ypos);
-  tsl (0,Ypos-5, lgZ)
-    clrs() 
-      dmirrorz() { // X axis
+  tsl (0,Ypos-5, lgZ) {
+    silver() 
+      dmirrorz()  // X axis
         cylx (-6,lgX-10, 0,10,12);
-      }
+    gray() cylx (-4,lgX-20, 0,-12,0);  
+  }  
   color(($showcore)?clr_transp:"silver")
     cubez (25,15,25, Xpos,Ypos-30,lgZ-10); // cooling block (finned)    
-  dmirrorx()  {
-    clst() {
-       tsl (lgX/2,Ypos-5,lgZ) mirrory() 
-         difference() {
-           union() {
-             hull() {
-               cylz (-8,14, -8.5,12,0);
-               cubez (2,8,10,  -15,12,-10/2);
-               cubez (2,8,14,  -6,12,-14/2);
-             }  
-             hull() {
-               cylz  (-8,15,   8.5,-12,0);
-               cubez (1,8,15,  0,-12,-15/2);
-             }
-             hull() { // carriages
-               cubez (2,32,12, 8,0,-6); 
-               cyly (-18,32,   0,0,0);
-             } 
-             cubez (12,12,40, -10.01,-10.01,-20);  
-             cubez (12,12,18, -6,-10,-18/2);  
-             hull() {
-               cubez (12,12,24, -10,-10,-12);  
-               cubez (12,12,10, -10,-5,-5);  
-             }  
-             cubez (16,32,10, -8,0,-5);  
-           }  //:: then whats removed
-           cylz (-3,66, -9,12,0); // pinch screw
-           cylz (-3,66, 9,-12,0);
-           dmirrorz()  // X axis
-             cyly (-3,66, 3,-15,17);
-          * cubez (50, 4, 10, 0,0,6);
-         }
-       bed_sup(Zpos);
-     } 
-     clrs() duplz(-55)  //LM8UU bearings for bed
-       dmirrorx()
-         cylz (-15,24,    lgXc/2 ,0,Zpos-bedThk-5);  
-     
-     clrs() // bearing LM6LUU on carriage
-       cyly (-12,35, lgX/2,Ypos-5,lgZ);
-  }  // end mirror
-  clrg() tsl (0,0,Zpos-42)
-    rot(0,17)
-      cylx (-4,lgX+20, 0,-10);
-  clst() tsl (Xpos,Ypos-5,lgZ) { // hotend support
-    dmirrorz()  hull() {
-      cylx (-18,32,    0,10,12);
-      cubex (32, 2,12, -16,18.02,12);
-    }  
-    hull() {
-      cubey (25,12,38, 0,-15); 
-      cubey (16,18,38, 0,1); 
-    }  
+  clst() tsl (0,Ypos-5,lgZ) {
+    tsl (lgX/2)  Y_carriage(); // left
+    tsl (-lgX/2) Y_carriage(true); // right
   }  
-  clrs() { //hotend details
+  dmirrorx()  { // bed system
+    clst()  bed_sup(Zpos);
+    silver() {
+      duplz(-55)  //LM8UU bearings for bed
+        dmirrorx()
+          cylz (-15,24,    lgXc/2 ,0,Zpos-bedThk-5);  
+      cyly (-12,35, lgX/2,Ypos-3.5,lgZ); // bearing LM6LUU on carriage
+    }  
+  }  // end mirror
+  gray() 
+    tsl (0,0,Zpos-42) // bed diag support
+      rot(0,17)
+        cylx (-4,lgX+20, 0,-10);
+  clst() 
+    tsl (Xpos,Ypos-5,lgZ) { // hotend support
+      dmirrorz()  hull() {
+        cylx (-18,32,    0,10,12);
+        cubex (32, 2,12, -16,18.02,12);
+      }  
+      hull() {
+        cubey (25,12,38, 0,-15); 
+        cubey (16,18,38, 0,1); 
+      }  
+    }  
+  silver() { //hotend details
     tsl(Xpos,Ypos-5,lgZ)
       dmirrorz()  
         dmirrorx() 
@@ -146,14 +127,12 @@ module simul(x=0,y=0,z=0) {
   
   struct(Xpos, Ypos, Zpos);  
 //--- parts which will not view in transparency (on purpose)
-  
-  
   color ("white") 
     cylz (4,50, Xpos,Ypos-hotend_offset,lgZ); // bowden tube
   tsl (Xpos, Ypos-38, lgZ+3)
     rot (90) build_fan(25,10); // hotend fan
      
-  clst() {
+  clst() { // bed nut support
     cylz (12,12, 0,ZScrewoffset,Zpos);
     hull() 
       dmirrorx() 
@@ -169,8 +148,57 @@ module simul(x=0,y=0,z=0) {
         cylz (-16,66, lgX/2-8,0,Zpos); 
     }  
   color ("white")cubez (120,120,1, 0,lgY/2-15,Zpos);     
-    
-  
+}
+
+module Y_carriage (right = false) {
+mirrorx (right)
+  difference() {
+    union() {
+      hull() { // pinch screw/ idler axis
+        duplx (-11) cylz (-10,15,  -8,-6,0);
+        cubez (14,6,10,  -8,-11.5,-10/2);
+        cubez (14,2,6,   -8,14,-6/2);
+      }  
+      hull() { // pinch screw ext
+        cylz  (-8, 15,   8.5,10,0);
+        cubez (5,2,15,   7,16.5,-15/2);
+        cubez (5,2,15,   2,0,-15/2);
+      }
+      cyly (-18,32,      0,1.5,0, 40);  // Y bearing holder
+      cubez (12,15,18,  -6,10,-18/2);  
+      hull() {
+        cubez (12,14,24, -10,10,-12);  
+        cubez (10,12,10, -11,5,-5);  
+      }  
+      hull() {
+        dmirrorz()  // X rods holes
+          cylx (14,12, -10-6,10,12, 32,0);
+        cubey (12,4,33,  -10,13.5); 
+      } 
+      cubey (5,4,37.5, -10,13.5); 
+      difference () {
+        cylz (-6.5,37.5,  -10, 14.5);
+        cubey (12,4,40,  -10,13.5+4); 
+      }  
+      hull() {
+        cone3x (9.5,5, 12,5,0 ,-24,-12,0);  
+        cubex (12,2,7,  -23.5,-7,0);
+      }
+    }  //:: then whats removed
+    cylz (-3,66,  -10, 14.5);
+    cylx (-4,-20, 0,-12,0);  //X axis reinforcment rod
+    dmirrorz()  // X rods holes
+      cylx (6,-15, 0,10,12);
+    cyly (-12, 99); // LM66UU space
+    duplx (-11) cylz (-4,66, -8,-6,0); // pinch screw/ idler axis
+    cylz (-3,66, 9,10,0); // pinch scew ext
+    dmirrorz()  // X axis
+      cyly (-3,66,   3,15,17);
+    cubex (20,20,1.2, 0,10); // cut external
+    cubex (12,20,1.2, -14,-9); // cut internal
+    dmirrorz ()
+      cubex (20,10,1.2, -20,16,12); // cut external
+  }
 }
 
 module bed_sup(Zpos=0) {
@@ -249,7 +277,7 @@ module belt_show(Xpos, Ypos) {
       pulley (dpFix, XbeltFix,lgY, beltL);
     beltd (dpFix, dpFix, 90, -XbeltFix,lgY,  XbeltFix*2,0, beltL);
   } 
-  clrg() { //Carriage pulley shafts
+  gray() { //Carriage pulley shafts
     cylz (-5,14, Xbelt-12,Ypos+offY, lgZ+beltH); 
     cylz (-5,14, -Xbelt,Ypos+offY, lgZ+beltH);
     cylz (-5,14, Xbelt,Ypos+offY, lgZ+beltL);
@@ -258,19 +286,77 @@ module belt_show(Xpos, Ypos) {
 }
 
 
+module motorsup(right=false) {
+  difference () {
+    mirrorx(right)
+      difference () {
+        union() {
+          hull() { // horizontal smooth rod support
+            cubez (2 ,32,2, lgX/2+8,motorpos,   lgZ+15); 
+            cyly (-11,36,  lgX/2, motorpos,  lgZ);
+          }
+          cubez (8,34,10, lgX/2+4,motorpos,   lgZ-3.99); // top - motor support
+          hull() { // vertical rod support
+            cylz (15,22,    lgXc/2,0,   lgZ-17);
+            cylz (-6,24,  lgXc/2+7,0, lgZ-5);
+          }  
+          tsl (Xbelt,motorpos,lgZ-4) { // motor support frame
+            dmirrory () 
+              cylz (8, 24, 15.5,15.5); 
+            cylz (8, 24, -15.5,-15.5); 
+            cubez (4,30,24, 15.5,0);
+            cubez (30,4,24, 0,-15.5);
+          }  
+          hull() { // horizontzal reinf rod support
+            cylx (10,40, Xbelt-20, -8, lgZ+1);
+            cylx (2,38, Xbelt-19, -4.5, lgZ+15);
+            cylx (2,38, Xbelt-20, -5, lgZ-3);
+          }  
+          hull() {
+            cylz (-6,24,  lgXc/2+7,0, lgZ-5);
+            cyly (-5,36,  lgXc/2+11,motorpos, lgZ-2);
+          }
+        } //::: then whats removed :::
+        cylx (5,99, 30, -8, lgZ+1); // horizontal reinf rod
+        cyly (6,55,  lgX/2, -4,  lgZ); // horizontal smooth rod
+        cylz (-6,25, Xbelt,motorpos, lgZ-4); 
+        cylz (-8,35,  lgXc/2,0, lgZ-4-5);// vertical rod
+        tsl (Xbelt,motorpos,lgZ-12) // motor holes
+          dmirrorx() dmirrory() 
+            cylz (-3.2,99, 15.5,15.5);
+      }
+    cubez (50,50,50, -Xbelt, motorpos, lgZ+5.99); // cut the low motor support
+    cconez (15, 2, 12,6, -Xbelt,motorpos, lgZ-14);
+  }  
+}
+
+module foot() {
+  difference() {
+    hull() {
+      //cubez (15,15,20, lgX/2,0,     floorPos); // foot
+      cylz (15,20,    lgXc/2,0,     floorPos);
+      cylx (-11,14, lgXc/2,8); // X reinf holder  
+    }  
+    cubez (1.5,20,50, lgXc/2,7,-1); // cut split
+    cylz (8,25,    lgXc/2,0,     floorPos-1); // vert rod
+    cylx (-5,18, lgXc/2,8); // X reinf rod
+  }
+}
+
+
 module struct(Xpos, Ypos, Zpos) {
   color ("burlywood")  cubez (lgX+20,lgY+35,-10, 0,lgY/2,floorPos); // floor
   dmirrorx() { // after plastic parts to not be seen by transparency
-    clrg() 
+    gray() 
       tsl (0,-15, Zpos-75)
          rot (-52)  
             cylz(5,110, lgX/2-20);  
-   clrs() {
+   silver() {
       cylz (8,lgZ+15, lgXc/2,0,floorPos); // Z axis
       cyly (6,lgY+10, lgX/2,-10,lgZ); // Y axis
     }  
   }  
-  clrg() {
+  gray() {
     cylx (-5,lgX+30, 0,-8,lgZ+1);   // X reinforcment top
     cylx (-5,lgX+20, 0,lgY+8,lgZ+2);   // X reinforcment  top end
     cylx (-5,lgX+15, 0,8); // X reinf bottom
@@ -282,78 +368,25 @@ module struct(Xpos, Ypos, Zpos) {
       rot(180) nema17(32);   
 
   dmirrorx() {
-   
-    clrg() {
+    gray() {
       *tsl (0,0,3) rot (41) 
         cyly (5,lgDiag+20, lgX/2+5,-22); // diagonals
       // diagonals abandoned, simpler to use larger rods (M8 instead of M5)
       cylz (diamZReinfRod,lgZ+30,  XbeltFix,lgY,-10); // Z reinf
     }
     clst() {
-      difference() {
-        hull() {
-          //cubez (15,15,20, lgX/2,0,     floorPos); // foot
-          cylz (15,20,    lgXc/2,0,     floorPos);
-          cylx (-11,14, lgXc/2,8); // X reinf holder  
-         * tsl (0,0,3) rot (41) 
-            cyly (11,20, lgXc/2+5,-8); // diagonals holder
-        }  
-       * tsl (0,0,3) rot (41) {
-          cyly (-5,99, lgXc/2+5,-8); // diagonals holes
-          cyly (9,9, lgXc/2+5,-17.5); // diagonals holes
-        } 
-       * cubez (30,30,-20, lgXc/2,0,-9); //cut below diagonal cylinder
-        cubez (1.5,20,50, lgXc/2,7,-1); // cut split
-      }  
+      foot();  
       hull() {  
         cuben (28,20,15, lgX/2-7,lgY-2, lgZ, true); // top end
         cylx (-11,28, lgX/2-7,lgY+8, lgZ+2);
       }  
-     * cubez (15,15,20, XbeltFix,lgY, floorPos); // foot end
+      cubez (15,15,20, XbeltFix,lgY, floorPos); // foot end
     }
   } // end dmirrorx()
-  clst() 
-    difference() { 
-    dmirrorx() 
-      difference () {
-        union() {
-          hull() {
-            cubez (2 ,32,2, lgX/2+8,motorpos,   lgZ+15); // top - motor support
-            cyly (-11,36,  lgX/2, motorpos,  lgZ);
-          }
-          cubez (8,34,10, lgX/2+4,motorpos,   lgZ-3.99); // top - motor support
-          hull() {
-            cylz (15,22,    lgXc/2,0,   lgZ-17);
-            cylz (-6,24,  lgXc/2+7,0, lgZ-5);
-          }  
-          tsl (Xbelt,motorpos,lgZ-4) {
-            dmirrory () 
-              cylz (8, 24, 15.5,15.5); 
-            cylz (8, 24, -15.5,-15.5); 
-            cubez (4,30,24, 15.5,0);
-            cubez (30,4,24, 0,-15.5);
-          }  
-          hull() {
-            cylx (10,40, Xbelt-20, -8, lgZ+1);
-            cylx (2,38, Xbelt-19, -5, lgZ+15);
-            cylx (2,38, Xbelt-20, -5, lgZ-3);
-          }  
-          hull() {
-            cylz (-6,24,  lgXc/2+7,0, lgZ-5);
-            cyly (-5,36,  lgXc/2+11,motorpos, lgZ-2);
-          }
-        } // then whats removed 
-        cylz (-6,25, Xbelt,motorpos, lgZ-4); 
-        
-        cylz (-8,25,  lgXc/2,0, lgZ-4);
-        tsl (Xbelt,motorpos,lgZ-12) 
-          dmirrorx() dmirrory() 
-            cylz (-3.2,99, 15.5,15.5);
-      }
-      cubez (50,50,50, -Xbelt, motorpos, lgZ+5.99); // cut the low motor support
-      cconez (15, 2, 12,6, -Xbelt,motorpos, lgZ-14);
-    }
-  
+  clst() {
+     motorsup();
+     motorsup(true);
+  }
   color("green") // control board (Duet 100x105)
     cubez (100,105,2, 18,150,2);
   color("black")
@@ -362,11 +395,11 @@ module struct(Xpos, Ypos, Zpos) {
     
   tsl (0,ZScrewoffset,38) {
    rot(0,0) nema17(34); // Z motor
-    clrg() cylz (6,145, 0,0,25);
+    gray() cylz (6,145, 0,0,25);
   }
   if (!$showcore) {
     tsl (-40,172,150) rot (12) set_extru();
-    clrg() cylz (5, 240,  -45,190,-15);  // extruder rod support
+    gray() cylz (5, 240,  -45,190,-15);  // extruder rod support
     clst() cubez (12,16,14, -45,192,lgZ-7);
     tsl (-150,40, lgZ+42) //pen draft  for scale
       rot(90, 0,70) pen();
@@ -418,7 +451,7 @@ angle=-10;
 //-- Miscellaneous utilities--------------------------------------------------
 
 module nema17(lg=40) { // NEMA 17 stepper motor. - replace by STL ??
-  clrg()
+  gray()
     difference() {
       union() {
         intersection() {
